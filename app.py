@@ -101,7 +101,7 @@ source_filter = st.sidebar.multiselect(
 
 tier_filter = st.sidebar.multiselect(
     "ICP Tier",
-    ["GOLD", "ORANGE", "YELLOW", "GRAY"],
+    ["PLATINUM", "GOLD", "SILVER", "BRONZE"],
     default=[]
 )
 
@@ -110,8 +110,28 @@ status_filter = st.sidebar.selectbox(
     ["All", "Not Contacted", "Followed", "DM Sent", "Replied", "Meeting Booked"]
 )
 
+# City and Region filters — load unique values from database
+@st.cache_data(ttl=300)
+def get_filter_options():
+    cities = set()
+    states = set()
+    r = requests.get(f'{SUPABASE_URL}/rest/v1/venues?select=city,state&limit=6000', headers=HEADERS)
+    if r.status_code == 200:
+        for v in r.json():
+            if v.get('city') and v['city'].strip():
+                cities.add(v['city'].strip())
+            if v.get('state') and v['state'].strip():
+                states.add(v['state'].strip())
+    return sorted(cities), sorted(states)
+
+cities_list, states_list = get_filter_options()
+
+region_filter = st.sidebar.multiselect("Region / State", states_list, default=[])
+city_filter = st.sidebar.multiselect("City", cities_list, default=[])
+
 has_ig_filter = st.sidebar.checkbox("Has Instagram only", value=False)
 has_dm_filter = st.sidebar.checkbox("Has Decision Maker only", value=False)
+has_tech_filter = st.sidebar.checkbox("Has tech stack detected", value=False)
 
 search = st.sidebar.text_input("Search venue name")
 
@@ -131,10 +151,16 @@ elif status_filter == "Replied":
     filter_str += '&replied=eq.true'
 elif status_filter == "Meeting Booked":
     filter_str += '&meeting_booked=eq.true'
+if region_filter:
+    filter_str += '&state=in.(' + ','.join(region_filter) + ')'
+if city_filter:
+    filter_str += '&city=in.(' + ','.join(city_filter) + ')'
 if has_ig_filter:
     filter_str += '&instagram=not.is.null&instagram=neq.'
 if has_dm_filter:
     filter_str += '&decision_maker=not.is.null&decision_maker=neq.'
+if has_tech_filter:
+    filter_str += '&notes=ilike.*tool*'
 if search:
     filter_str += f'&name=ilike.*{search}*'
 
