@@ -55,6 +55,7 @@ def get_stats():
         'dm_sent': '&dm_sent=eq.true',
         'replied': '&replied=eq.true',
         'meeting_booked': '&meeting_booked=eq.true',
+        'cover_charge': '&has_cover_charge=eq.true',
     }
     for key, q in queries.items():
         r = requests.get(
@@ -79,14 +80,15 @@ st.markdown("""
 
 # Stats bar
 stats = get_stats()
-col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
 col1.metric("Total Leads", f"{stats['total']:,}")
-col2.metric("With IG", f"{stats['with_ig']:,}")
-col3.metric("Decision Makers", f"{stats['with_dm']:,}")
-col4.metric("Followed", f"{stats['followed']:,}")
-col5.metric("DMs Sent", f"{stats['dm_sent']:,}")
-col6.metric("Replied", f"{stats['replied']:,}")
-col7.metric("Meetings", f"{stats['meeting_booked']:,}")
+col2.metric("Cover Charge", f"{stats['cover_charge']:,}")
+col3.metric("With IG", f"{stats['with_ig']:,}")
+col4.metric("Decision Makers", f"{stats['with_dm']:,}")
+col5.metric("Followed", f"{stats['followed']:,}")
+col6.metric("DMs Sent", f"{stats['dm_sent']:,}")
+col7.metric("Replied", f"{stats['replied']:,}")
+col8.metric("Meetings", f"{stats['meeting_booked']:,}")
 
 st.divider()
 
@@ -95,7 +97,7 @@ st.sidebar.header("Filters")
 
 source_filter = st.sidebar.multiselect(
     "Source",
-    ["tixr", "eventbrite", "google_maps"],
+    ["tixr", "eventbrite", "google_maps", "google_maps_au", "foursquare", "posh", "laylo"],
     default=[]
 )
 
@@ -129,6 +131,7 @@ cities_list, states_list = get_filter_options()
 region_filter = st.sidebar.multiselect("Region / State", states_list, default=[])
 city_filter = st.sidebar.multiselect("City", cities_list, default=[])
 
+has_cover_filter = st.sidebar.checkbox("Has cover charge / ticketed", value=False)
 has_ig_filter = st.sidebar.checkbox("Has Instagram only", value=False)
 has_dm_filter = st.sidebar.checkbox("Has Decision Maker only", value=False)
 has_tech_filter = st.sidebar.checkbox("Has tech stack detected", value=False)
@@ -155,6 +158,8 @@ if region_filter:
     filter_str += '&state=in.(' + ','.join(region_filter) + ')'
 if city_filter:
     filter_str += '&city=in.(' + ','.join(city_filter) + ')'
+if has_cover_filter:
+    filter_str += '&has_cover_charge=eq.true'
 if has_ig_filter:
     filter_str += '&instagram=not.is.null&instagram=neq.'
 if has_dm_filter:
@@ -179,6 +184,7 @@ tab1, tab2, tab3 = st.tabs(["Lead List", "Lead Detail", "Pipeline View"])
 with tab1:
     # Display columns
     display_cols = ['name', 'instagram', 'decision_maker', 'city', 'icp_tier', 'source',
+                    'has_cover_charge', 'ticket_price_min', 'ticket_price_max',
                     'followers', 'followed', 'dm_sent', 'replied', 'meeting_booked']
     available_cols = [c for c in display_cols if c in df.columns]
 
@@ -193,6 +199,9 @@ with tab1:
             'city': st.column_config.TextColumn('City', width='small'),
             'icp_tier': st.column_config.TextColumn('Tier', width='small'),
             'source': st.column_config.TextColumn('Source', width='small'),
+            'has_cover_charge': st.column_config.CheckboxColumn('Cover $', width='small'),
+            'ticket_price_min': st.column_config.NumberColumn('Price Min', width='small', format='$%.0f'),
+            'ticket_price_max': st.column_config.NumberColumn('Price Max', width='small', format='$%.0f'),
             'followers': st.column_config.NumberColumn('Followers', width='small'),
             'followed': st.column_config.CheckboxColumn('Followed', width='small'),
             'dm_sent': st.column_config.CheckboxColumn('DM Sent', width='small'),
@@ -230,6 +239,12 @@ with tab2:
                 st.write(f"**Website:** {lead.get('website', 'N/A')}")
                 st.write(f"**Phone:** {lead.get('phone', 'N/A')}")
                 st.write(f"**Email:** {lead.get('email', 'N/A')}")
+                cover = 'Yes' if lead.get('has_cover_charge') else 'No'
+                price_min = lead.get('ticket_price_min')
+                price_max = lead.get('ticket_price_max')
+                price_str = f"${price_min:.0f} - ${price_max:.0f}" if price_min and price_max else f"${price_min:.0f}+" if price_min else "Unknown"
+                st.write(f"**Cover Charge:** {cover}")
+                st.write(f"**Ticket Price Range:** {price_str if lead.get('has_cover_charge') else 'N/A'}")
 
             with col_right:
                 st.write(f"**IG Bio:** {lead.get('ig_bio', 'N/A')}")
