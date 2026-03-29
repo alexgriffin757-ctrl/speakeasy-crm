@@ -117,24 +117,38 @@ status_filter = st.sidebar.selectbox(
 def get_filter_options():
     cities = set()
     states = set()
-    r = requests.get(f'{SUPABASE_URL}/rest/v1/venues?select=city,state&limit=6000', headers=HEADERS)
+    groups = set()
+    r = requests.get(f'{SUPABASE_URL}/rest/v1/venues?select=city,state,ownership_group&limit=12000', headers=HEADERS)
     if r.status_code == 200:
         for v in r.json():
             if v.get('city') and v['city'].strip():
                 cities.add(v['city'].strip())
             if v.get('state') and v['state'].strip():
                 states.add(v['state'].strip())
-    return sorted(cities), sorted(states)
+            if v.get('ownership_group') and v['ownership_group'].strip():
+                groups.add(v['ownership_group'].strip())
+    return sorted(cities), sorted(states), sorted(groups)
 
-cities_list, states_list = get_filter_options()
+cities_list, states_list, groups_list = get_filter_options()
 
 region_filter = st.sidebar.multiselect("Region / State", states_list, default=[])
 city_filter = st.sidebar.multiselect("City", cities_list, default=[])
+
+st.sidebar.divider()
+st.sidebar.subheader("Venue Intelligence")
+
+status_venue_filter = st.sidebar.selectbox(
+    "Business Status",
+    ["All", "Operational", "Closed", "Unknown"],
+)
 
 has_cover_filter = st.sidebar.checkbox("Has cover charge / ticketed", value=False)
 has_ig_filter = st.sidebar.checkbox("Has Instagram only", value=False)
 has_dm_filter = st.sidebar.checkbox("Has Decision Maker only", value=False)
 has_tech_filter = st.sidebar.checkbox("Has tech stack detected", value=False)
+has_group_filter = st.sidebar.checkbox("Part of ownership group", value=False)
+
+group_filter = st.sidebar.multiselect("Ownership Group", groups_list, default=[])
 
 search = st.sidebar.text_input("Search venue name")
 
@@ -166,6 +180,16 @@ if has_dm_filter:
     filter_str += '&decision_maker=not.is.null&decision_maker=neq.'
 if has_tech_filter:
     filter_str += '&notes=ilike.*tool*'
+if has_group_filter:
+    filter_str += '&ownership_group=not.is.null&ownership_group=neq.'
+if group_filter:
+    filter_str += '&ownership_group=in.(' + ','.join(group_filter) + ')'
+if status_venue_filter == "Operational":
+    filter_str += '&business_status=eq.operational'
+elif status_venue_filter == "Closed":
+    filter_str += '&or=(business_status.eq.closed_permanently,business_status.eq.closed_temporarily)'
+elif status_venue_filter == "Unknown":
+    filter_str += '&business_status=eq.unknown'
 if search:
     filter_str += f'&name=ilike.*{search}*'
 
@@ -184,8 +208,8 @@ tab1, tab2, tab3 = st.tabs(["Lead List", "Lead Detail", "Pipeline View"])
 with tab1:
     # Display columns
     display_cols = ['name', 'instagram', 'decision_maker', 'city', 'icp_tier', 'source',
-                    'has_cover_charge', 'ticket_price_min', 'ticket_price_max',
-                    'followers', 'followed', 'dm_sent', 'replied', 'meeting_booked']
+                    'business_status', 'has_cover_charge', 'ticket_price_min', 'ticket_price_max',
+                    'ownership_group', 'followers', 'followed', 'dm_sent', 'replied', 'meeting_booked']
     available_cols = [c for c in display_cols if c in df.columns]
 
     st.dataframe(
@@ -199,9 +223,11 @@ with tab1:
             'city': st.column_config.TextColumn('City', width='small'),
             'icp_tier': st.column_config.TextColumn('Tier', width='small'),
             'source': st.column_config.TextColumn('Source', width='small'),
+            'business_status': st.column_config.TextColumn('Status', width='small'),
             'has_cover_charge': st.column_config.CheckboxColumn('Cover $', width='small'),
             'ticket_price_min': st.column_config.NumberColumn('Price Min', width='small', format='$%.0f'),
             'ticket_price_max': st.column_config.NumberColumn('Price Max', width='small', format='$%.0f'),
+            'ownership_group': st.column_config.TextColumn('Group', width='medium'),
             'followers': st.column_config.NumberColumn('Followers', width='small'),
             'followed': st.column_config.CheckboxColumn('Followed', width='small'),
             'dm_sent': st.column_config.CheckboxColumn('DM Sent', width='small'),
@@ -239,12 +265,17 @@ with tab2:
                 st.write(f"**Website:** {lead.get('website', 'N/A')}")
                 st.write(f"**Phone:** {lead.get('phone', 'N/A')}")
                 st.write(f"**Email:** {lead.get('email', 'N/A')}")
+                st.write(f"**Business Status:** {lead.get('business_status', 'unknown').replace('_', ' ').title()}")
                 cover = 'Yes' if lead.get('has_cover_charge') else 'No'
                 price_min = lead.get('ticket_price_min')
                 price_max = lead.get('ticket_price_max')
                 price_str = f"${price_min:.0f} - ${price_max:.0f}" if price_min and price_max else f"${price_min:.0f}+" if price_min else "Unknown"
                 st.write(f"**Cover Charge:** {cover}")
                 st.write(f"**Ticket Price Range:** {price_str if lead.get('has_cover_charge') else 'N/A'}")
+                group = lead.get('ownership_group') or 'None'
+                parent = lead.get('parent_company') or ''
+                group_str = f"{group}" + (f" ({parent})" if parent and parent != group else "")
+                st.write(f"**Ownership Group:** {group_str}")
 
             with col_right:
                 st.write(f"**IG Bio:** {lead.get('ig_bio', 'N/A')}")
