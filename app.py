@@ -24,7 +24,7 @@ HEADERS = {
 @st.cache_data(ttl=30)
 def load_leads(filters=None):
     """Load leads from Supabase."""
-    params = 'select=*&order=icp_tier.asc.nullslast,followers.desc.nullslast&limit=5000'
+    params = 'select=*&order=icp_tier.asc.nullslast,followers.desc.nullslast&limit=5000&icp_tier=neq.ARTIST'
     if filters:
         params += filters
     r = requests.get(f'{SUPABASE_URL}/rest/v1/venues?{params}', headers=HEADERS)
