@@ -48,9 +48,10 @@ def get_stats():
     """Get dashboard stats."""
     stats = {}
     queries = {
-        'total': '',
-        'with_ig': '&instagram=not.is.null&instagram=neq.',
-        'with_dm': '&decision_maker=not.is.null&decision_maker=neq.',
+        'total': '&icp_tier=neq.ARTIST',
+        'whale': '&icp_tier=eq.WHALE',
+        'with_ig': '&instagram=not.is.null&instagram=neq.&icp_tier=neq.ARTIST',
+        'with_dm': '&decision_maker=not.is.null&decision_maker=neq.&icp_tier=neq.ARTIST',
         'followed': '&followed=eq.true',
         'dm_sent': '&dm_sent=eq.true',
         'replied': '&replied=eq.true',
@@ -80,15 +81,16 @@ st.markdown("""
 
 # Stats bar
 stats = get_stats()
-col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns(9)
 col1.metric("Total Leads", f"{stats['total']:,}")
-col2.metric("Cover Charge", f"{stats['cover_charge']:,}")
-col3.metric("With IG", f"{stats['with_ig']:,}")
-col4.metric("Decision Makers", f"{stats['with_dm']:,}")
-col5.metric("Followed", f"{stats['followed']:,}")
-col6.metric("DMs Sent", f"{stats['dm_sent']:,}")
-col7.metric("Replied", f"{stats['replied']:,}")
-col8.metric("Meetings", f"{stats['meeting_booked']:,}")
+col2.metric("Whales", f"{stats['whale']:,}")
+col3.metric("Cover Charge", f"{stats['cover_charge']:,}")
+col4.metric("With IG", f"{stats['with_ig']:,}")
+col5.metric("Decision Makers", f"{stats['with_dm']:,}")
+col6.metric("Followed", f"{stats['followed']:,}")
+col7.metric("DMs Sent", f"{stats['dm_sent']:,}")
+col8.metric("Replied", f"{stats['replied']:,}")
+col9.metric("Meetings", f"{stats['meeting_booked']:,}")
 
 st.divider()
 
@@ -103,7 +105,7 @@ source_filter = st.sidebar.multiselect(
 
 tier_filter = st.sidebar.multiselect(
     "ICP Tier",
-    ["PLATINUM", "GOLD", "SILVER", "BRONZE"],
+    ["WHALE", "PLATINUM", "GOLD", "SILVER", "BRONZE"],
     default=[]
 )
 
