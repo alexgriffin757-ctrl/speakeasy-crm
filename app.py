@@ -97,9 +97,15 @@ st.divider()
 # Sidebar filters
 st.sidebar.header("Filters")
 
+venue_category_filter = st.sidebar.multiselect(
+    "Venue Category",
+    ["Nightclub", "Festival / Large Event", "Lounge", "Bar / Pub", "Hotel / Resort / Casino", "Convention Center", "Restaurant", "Other"],
+    default=[]
+)
+
 source_filter = st.sidebar.multiselect(
     "Source",
-    ["tixr", "eventbrite", "google_maps", "google_maps_au", "foursquare", "posh", "laylo"],
+    ["tixr", "eventbrite", "google_maps", "google_maps_au", "foursquare", "posh", "laylo", "seetickets", "peerpop"],
     default=[]
 )
 
@@ -156,6 +162,8 @@ search = st.sidebar.text_input("Search venue name")
 
 # Build filter string
 filter_str = ''
+if venue_category_filter:
+    filter_str += '&venue_type=in.(' + ','.join(venue_category_filter) + ')'
 if source_filter:
     filter_str += '&source=in.(' + ','.join(source_filter) + ')'
 if tier_filter:
@@ -209,7 +217,7 @@ tab1, tab2, tab3 = st.tabs(["Lead List", "Lead Detail", "Pipeline View"])
 
 with tab1:
     # Display columns
-    display_cols = ['name', 'instagram', 'decision_maker', 'city', 'icp_tier', 'source',
+    display_cols = ['name', 'instagram', 'decision_maker', 'city', 'icp_tier', 'venue_type', 'source',
                     'business_status', 'has_cover_charge', 'ticket_price_min', 'ticket_price_max',
                     'ownership_group', 'followers', 'followed', 'dm_sent', 'replied', 'meeting_booked']
     available_cols = [c for c in display_cols if c in df.columns]
@@ -224,6 +232,7 @@ with tab1:
             'decision_maker': st.column_config.TextColumn('Decision Maker', width='medium'),
             'city': st.column_config.TextColumn('City', width='small'),
             'icp_tier': st.column_config.TextColumn('Tier', width='small'),
+            'venue_type': st.column_config.TextColumn('Category', width='small'),
             'source': st.column_config.TextColumn('Source', width='small'),
             'business_status': st.column_config.TextColumn('Status', width='small'),
             'has_cover_charge': st.column_config.CheckboxColumn('Cover $', width='small'),
